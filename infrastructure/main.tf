@@ -1,4 +1,4 @@
-# Configure the AWS Providerrr
+# Configure the AWS Provider
 provider "aws" {
   region = "eu-west-1" 
 }
