@@ -5,7 +5,11 @@ provider "aws" {
 
 # create s3 bucket
 resource "aws_s3_bucket" "website" {
-    bucket = "personal-resume-website-tatofs"
+  bucket = "personal-resume-website-tatofs"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # enable website hosting
@@ -47,3 +51,8 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
+# Output the website endpoint
+output "website_url" {
+  value = aws_s3_bucket_website_configuration.website.website_endpoint
+  description = "URL of the S3 website bucket"
+}
