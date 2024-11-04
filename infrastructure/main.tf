@@ -43,6 +43,24 @@ resource "aws_s3_bucket_policy" "website" {
         Action    = "s3:GetObject"
         Resource  = "${aws_s3_bucket.website.arn}/*"
       },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket",
+          "s3:PutBucketPolicy",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucketWebsite"
+        ]
+        Resource = "arn:aws:s3:::resume-website"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = "arn:aws:s3:::*"
+      }
     ]
   })
 }
