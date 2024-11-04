@@ -30,7 +30,7 @@ resource "aws_s3_bucket_public_access_block" "website" {
   restrict_public_buckets = false
 }
 
-# Add bucket policy for public read access
+# Add bucket policy for public read accesss
 resource "aws_s3_bucket_policy" "website" {
   bucket = aws_s3_bucket.website.id
   policy = jsonencode({
