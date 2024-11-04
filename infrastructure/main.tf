@@ -1,20 +1,16 @@
-# Configure the AWS Providerr
+# Configure the AWS Provider
 provider "aws" {
-  region = "eu-west-1" 
+  region = "eu-west-1"
 }
 
-# create s3 bucket
-resource "aws_s3_bucket" "website" {
+# Use data source for existing bucket
+data "aws_s3_bucket" "website" {
   bucket = "personal-resume-website-tatofs"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
-# enable website hosting
+# Enable website hosting
 resource "aws_s3_bucket_website_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
+  bucket = data.aws_s3_bucket.website.id
 
   index_document {
     suffix = "index.html"
@@ -24,9 +20,9 @@ resource "aws_s3_bucket_website_configuration" "website" {
   }
 }
 
-#make bucket public
+# Make bucket public
 resource "aws_s3_bucket_public_access_block" "website" {
-  bucket = aws_s3_bucket.website.id
+  bucket = data.aws_s3_bucket.website.id
 
   block_public_acls       = false
   block_public_policy     = false
