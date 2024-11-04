@@ -36,7 +36,7 @@ resource "aws_s3_bucket_public_access_block" "website" {
 
 # Add bucket policy for public read access
 resource "aws_s3_bucket_policy" "website" {
-  bucket = aws_s3_bucket.website.id
+  bucket = data.aws_s3_bucket.website.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -45,8 +45,13 @@ resource "aws_s3_bucket_policy" "website" {
         Effect    = "Allow"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.website.arn}/*"
+        Resource  = "${data.aws_s3_bucket.website.arn}/*"
       }
     ]
   })
+}
+
+# Output the website URL
+output "website_url" {
+  value = data.aws_s3_bucket.website.website_endpoint
 }
