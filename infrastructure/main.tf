@@ -5,7 +5,7 @@ provider "aws" {
 
 # create s3 bucket
 resource "aws_s3_bucket" "website" {
-    bucket = "personal-resume-website"
+    bucket = "personal-resume-website-<tatofs>"
 }
 
 # enable website hosting
