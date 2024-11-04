@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex">
+  <title>santiago fischel | writing </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="images/fav.png" sizes="32x32">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro&display=swap" rel="stylesheet">
+  <a href="index.html" class="about-marble"><img id="icon4" src="images/marble.png" draggable="true"></a>
+</head>
+<style>
+  body {
+    background: linear-gradient(to bottom, #202020, #3f3f3f);
+  }
+</style>
+<body class="writing-page">
+  <header class = writing_header>
+    <h1>check out my newsletter:</h1>
+  </header>
+  <main class ="writing-main-content">
+    <div id="substack-feed-embed"></div>
+    <div id="custom-substack-embed"></div>
+  </main>
+  <script>
+    window.SubstackFeedWidget = {
+      substackUrl: "santiagofischel.substack.com",
+      posts: 3,
+    };
+
+    window.CustomSubstackWidget = {
+      substackUrl: "santiagofischel.substack.com",
+      placeholder: "example@gmail.com",
+      buttonText: "subscribe",
+      theme: "purple"
+    };
+
+    (function() {
+      var feedScript = document.createElement('script');
+      feedScript.src = 'https://substackapi.com/embeds/feed.js';
+      feedScript.async = true;
+      document.body.appendChild(feedScript);
+    })();
+
+    (function() {
+      var customScript = document.createElement('script');
+      customScript.src = 'https://substackapi.com/widget.js';
+      customScript.async = true;
+      document.body.appendChild(customScript);
+    })();
+  </script>
+</body>
+</html>
