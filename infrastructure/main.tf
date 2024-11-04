@@ -3,7 +3,7 @@ provider "aws" {
   region = "eu-west-1" 
 }
 
-# create s3 bucket
+# Create or import existing s3 bucket
 resource "aws_s3_bucket" "website" {
   bucket = "personal-resume-website-tatofs"
 
