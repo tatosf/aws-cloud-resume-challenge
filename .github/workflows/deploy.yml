@@ -42,3 +42,11 @@ jobs:
       - name: Sync files to S3
         run: |
             aws s3 sync ./website s3://personal-resume-website-tatofs
+      - name: Invalidate CloudFront cache
+        run: |
+            aws cloudfront create-invalidation --distribution-id $(terraform output -raw cloudfront_distribution_id) --paths /index.html
+        
+    # Add Cypress smoke tests here
+      - name: Run Cypress tests
+        run: |
+            echo "No Cypress tests added yet"
