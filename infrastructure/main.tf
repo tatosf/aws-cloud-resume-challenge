@@ -1,7 +1,7 @@
 # infrastructure/main.tf
 
 provider "aws" {
-  region = "us-east-1"
+  region = "eu-west-1"
 }
 
 # Create S3 Bucket
