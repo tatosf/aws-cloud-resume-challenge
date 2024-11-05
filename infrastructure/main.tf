@@ -1,4 +1,4 @@
-# infrastructure/main.tf
+## infrastructure/main.tf
 
 provider "aws" {
   region = "eu-west-1"
