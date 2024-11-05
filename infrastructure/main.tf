@@ -1,30 +1,15 @@
-## Configure the AWS Provider
+# infrastructure/main.tf
+
 provider "aws" {
-  region = "eu-west-1" 
+  region = "us-east-1"
 }
 
-# create s3 bucket
+# Create S3 Bucket
 resource "aws_s3_bucket" "website" {
   bucket = "personal-resume-website-tatofs"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
-# enable website hosting
-resource "aws_s3_bucket_website_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
-  error_document {
-    key = "error.html"
-  }
-}
-
-#make bucket public
+# Make bucket public FIRST
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
@@ -34,8 +19,9 @@ resource "aws_s3_bucket_public_access_block" "website" {
   restrict_public_buckets = false
 }
 
-# Add bucket policy for public read access
 resource "aws_s3_bucket_policy" "website" {
+  depends_on = [aws_s3_bucket_public_access_block.website]
+  
   bucket = aws_s3_bucket.website.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -46,7 +32,20 @@ resource "aws_s3_bucket_policy" "website" {
         Principal = "*"
         Action    = "s3:GetObject"
         Resource  = "${aws_s3_bucket.website.arn}/*"
-      }
+      },
     ]
   })
+}
+
+# Configure website hosting
+resource "aws_s3_bucket_website_configuration" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "error.html"
+  }
 }
