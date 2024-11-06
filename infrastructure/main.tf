@@ -104,3 +104,11 @@ resource "aws_route53_record" "website" {
     evaluate_target_health = false
   }
 }
+
+output "cloudfront_distribution_id" {
+  value       = aws_cloudfront_distribution.website.id
+}
+
+output "website_bucket_name" {
+  value       = aws_s3_bucket.website.id
+}
