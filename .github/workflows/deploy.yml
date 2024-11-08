@@ -38,18 +38,17 @@ jobs:
         working-directory: ./infrastructure
         id: cloudfront
         run: |
-            DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-            echo "::set-output name=distribution_id::$DIST_ID"
-        
+          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+          echo "::set-output name=distribution_id::$DIST_ID"
+  
       - name: Invalidate CloudFront Cache
         run: |
-            DIST_ID=${{ steps.cloudfront.outputs.distribution_id }}
-            if [ -n "$DIST_ID" ]; then
-              aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
-            else
-              echo "Failed to get CloudFront distribution ID"
-              exit 1
-            fi
+          if [ -n "${{ steps.cloudfront.outputs.distribution_id }}" ]; then
+            aws cloudfront create-invalidation --distribution-id "${{ steps.cloudfront.outputs.distribution_id }}" --paths "/*"
+          else
+            echo "Failed to get CloudFront distribution ID"
+            exit 1
+          fi
         
       - name: Run Cypress tests
         run: |
