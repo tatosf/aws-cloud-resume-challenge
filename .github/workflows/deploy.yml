@@ -34,16 +34,22 @@ jobs:
         run: |
           aws s3 sync ./website s3://personal-resume-website-tatofs
             
-      - name: Invalidate CloudFront cache
-        working-directory: ./infrastructure  
+      - name: Get CloudFront Distribution ID
+        working-directory: ./infrastructure
+        id: cloudfront
         run: |
-          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-          if [ -n "$DIST_ID" ]; then
-            aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
-          else
-            echo "Failed to get CloudFront distribution ID"
-            exit 1
-          fi
+            DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+            echo "::set-output name=distribution_id::$DIST_ID"
+        
+      - name: Invalidate CloudFront Cache
+        run: |
+            DIST_ID=${{ steps.cloudfront.outputs.distribution_id }}
+            if [ -n "$DIST_ID" ]; then
+              aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
+            else
+              echo "Failed to get CloudFront distribution ID"
+              exit 1
+            fi
         
       - name: Run Cypress tests
         run: |
