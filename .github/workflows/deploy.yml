@@ -33,17 +33,17 @@ jobs:
         working-directory: ./infrastructure
         run: |
           terraform init
-          terraform apply -auto-approve
+          terraform apply -auto-approve -replace="aws_cloudfront_distribution.website" -replace="aws_route53_zone.website"
 
       - name: Sync files to S3
         run: |
           aws s3 sync ./website s3://${{ env.S3_BUCKET }}
 
-      - id: get-cloudfront-distribution-id
-        name: Get CloudFront Distribution ID
+      - name: Get CloudFront Distribution ID
+        id: get-cloudfront-distribution-id
         working-directory: ./infrastructure
         run: |
-          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+          DIST_ID=$(terraform output -json | jq -r '.cloudfront_distribution_id.value')
           echo "CLOUDFRONT_DISTRIBUTION_ID=$DIST_ID" >> $GITHUB_OUTPUT
 
       - name: Invalidate CloudFront Cache
