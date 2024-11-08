@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex">
+  <title>santiago fischel | home </title>
+  <link rel="icon" type="image/png" href="images/fav.png" sizes="32x32">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css?family=Space+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <script src="particle.js"></script>
+  <script src="sketch.js"></script>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TWBVTRXJ6K"></script> 
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-TWBVTRXJ6K');
+</script>
+</head>
+<body class = home>
+  <canvas id="myCanvas"></canvas>
+
+  <div class="icons">
+    <a href="about.html" class="icon-link"><img id="icon1" src="images/subject.png" draggable="true"></a>
+    <a href="writing.html" class="icon-link"><img id="icon2" src="images/book.png" draggable="true"></a>
+    <a href="work.html" class="icon-link"><img id="icon3" src="images/hammer.png" draggable="true"></a>
+    <a class="messageicon">
+      <div class="message-box">
+        <img id="icon5" src="images/messagebox.png" draggable="true">
+        <span class="message-text">
+          hello! feel free to move things around and explore. if you get lost, click on the marble to return home
+        </span>
+      </div>
+    </a>
+    <a class="icon-link"><img id="icon4" src="images/marble.png" draggable="true"></a>
+  </div>
+
+  <script>
+    let zIndexCounter = 1; // Initialize zIndex counter
+    $(document).ready(function() {
+      $(".icon-link img, .message-box").draggable({
+        start: function(event, ui) {
+          $(this).data("preventClick", true); // Set a flag to prevent click
+          $(this).css('z-index', zIndexCounter++); // Increase the zIndex of the dragged image
+        },
+        stop: function(event, ui) {
+          $(this).data("preventClick", false); // Clear the flag to allow click
+        },
+        drag: function(event, ui) {
+          var offsetXPos = ui.offset.left;
+          var offsetYPos = ui.offset.top;
+
+          // Apply the dragged position
+          $(this).css("left", offsetXPos);
+          $(this).css("top", offsetYPos);
+        }
+      });
+      // Add event listeners to prevent click when dragging
+      $(".icon-link").on("click", function(event) {
+        if ($(this).find("img").data("preventClick")) {
+          event.preventDefault(); // Prevent the link from being followed
+        }
+      });
+    });
+  </script>
+</body>
+</html>

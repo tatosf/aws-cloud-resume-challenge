@@ -7,6 +7,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
+    env:
+      AWS_REGION: eu-west-1
+      S3_BUCKET: personal-resume-website-tatofs
+      
     steps:
       - uses: actions/checkout@v2
 
@@ -15,7 +20,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1  
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
@@ -32,24 +37,26 @@ jobs:
 
       - name: Sync files to S3
         run: |
-          aws s3 sync ./website s3://personal-resume-website-tatofs
-            
-      - name: Get CloudFront Distribution ID
+          aws s3 sync ./website s3://${{ env.S3_BUCKET }}
+
+      - id: get-cloudfront-distribution-id
+        name: Get CloudFront Distribution ID
         working-directory: ./infrastructure
-        id: cloudfront
         run: |
           DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-          echo "::set-output name=distribution_id::$DIST_ID"
-  
+          echo "CLOUDFRONT_DISTRIBUTION_ID=$DIST_ID" >> $GITHUB_OUTPUT
+
       - name: Invalidate CloudFront Cache
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ steps.get-cloudfront-distribution-id.outputs.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
-          if [ -n "${{ steps.cloudfront.outputs.distribution_id }}" ]; then
-            aws cloudfront create-invalidation --distribution-id "${{ steps.cloudfront.outputs.distribution_id }}" --paths "/*"
+          if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths "/*"
           else
             echo "Failed to get CloudFront distribution ID"
             exit 1
           fi
-        
+
       - name: Run Cypress tests
         run: |
           echo "No Cypress tests added yet"
