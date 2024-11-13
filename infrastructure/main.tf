@@ -1,9 +1,9 @@
-# Provider for the main region (eu-west-1)
+
 provider "aws" {
   region = "eu-west-1"
 }
 
-# Provider for ACM certificate (MUST be in us-east-1 for CloudFront)
+
 provider "aws" {
   alias  = "us-east-1"
   region = "us-east-1"
