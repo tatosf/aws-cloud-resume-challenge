@@ -1,11 +1,17 @@
+# Provider for the main region (eu-west-1)
 provider "aws" {
-  alias  = "eu-west-1"
   region = "eu-west-1"
 }
 
-# Create ACM Certificate
+# Provider for ACM certificate (MUST be in us-east-1 for CloudFront)
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"  # Changed from eu-west-1 to us-east-1
+}
+
+# Create ACM Certificate (in us-east-1)
 resource "aws_acm_certificate" "website" {
-  provider          = aws.eu-west-1
+  provider          = aws.us-east-1  # Changed from eu-west-1 to us-east-1
   domain_name       = "santiagofischel.com"
   validation_method = "DNS"
 
@@ -32,13 +38,18 @@ resource "aws_route53_record" "cert_validation" {
   zone_id         = aws_route53_zone.website.id
 }
 
+# Certificate validation
 resource "aws_acm_certificate_validation" "website" {
-  provider                = aws.us-east-1
+  provider                = aws.us-east-1  # Must match the certificate provider
   certificate_arn         = aws_acm_certificate.website.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+  depends_on             = [aws_route53_record.cert_validation]  # Added depends_on
 }
 
+# CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
+  depends_on = [aws_acm_certificate_validation.website]  # Added depends_on
+
   origin {
     domain_name = aws_s3_bucket.website.bucket_regional_domain_name
     origin_id   = "s3-website"
@@ -46,7 +57,7 @@ resource "aws_cloudfront_distribution" "website" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  aliases             = ["santiagofischel.com"] 
+  aliases             = ["santiagofischel.com"]
 
   default_cache_behavior {
     viewer_protocol_policy = "redirect-to-https"
@@ -80,8 +91,17 @@ resource "aws_cloudfront_distribution" "website" {
   }
 }
 
-# Add this output to get the nameservers
 output "nameservers" {
-  value = aws_route53_zone.website.name_servers
+  value       = aws_route53_zone.website.name_servers
   description = "Nameservers for the Route53 zone. Update these in your domain registrar."
+}
+
+# Add CloudFront domain output for verification
+output "cloudfront_domain" {
+  value = aws_cloudfront_distribution.website.domain_name
+}
+
+# Add certificate ARN output for verification
+output "certificate_arn" {
+  value = aws_acm_certificate.website.arn
 }
