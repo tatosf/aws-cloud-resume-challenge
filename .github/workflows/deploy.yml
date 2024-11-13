@@ -43,12 +43,11 @@ jobs:
         id: get-cloudfront-distribution-id
         working-directory: ./infrastructure
         run: |
-          DIST_ID=$(terraform output -json | jq -r '.cloudfront_distribution_id.value')
-          echo "CLOUDFRONT_DISTRIBUTION_ID=$DIST_ID" >> $GITHUB_OUTPUT
+          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+          echo "CLOUDFRONT_DISTRIBUTION_ID=$DIST_ID" >> $GITHUB_ENV
+        
 
       - name: Invalidate CloudFront Cache
-        env:
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ steps.get-cloudfront-distribution-id.outputs.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
             aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths "/*"
@@ -56,6 +55,8 @@ jobs:
             echo "Failed to get CloudFront distribution ID"
             exit 1
           fi
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ env.CLOUDFRONT_DISTRIBUTION_ID }}
 
       - name: Run Cypress tests
         run: |
