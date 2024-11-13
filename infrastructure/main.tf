@@ -1,55 +1,54 @@
-## infrastructure/main.tf
-
+# Provider for the main region (eu-west-1)
 provider "aws" {
   region = "eu-west-1"
 }
 
-# Create S3 Bucket
-resource "aws_s3_bucket" "website" {
-  bucket = "personal-resume-website-tatofs"
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"  
 }
 
-resource "aws_s3_bucket_public_access_block" "website" {
-  bucket = aws_s3_bucket.website.id
+# Create ACM Certificate (in us-east-1)
+resource "aws_acm_certificate" "website" {
+  provider          = aws.us-east-1 
+  domain_name       = "santiagofischel.com"
+  validation_method = "DNS"
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
-
-resource "aws_s3_bucket_policy" "website" {
-  depends_on = [aws_s3_bucket_public_access_block.website]
-  bucket = aws_s3_bucket.website.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.website.arn}/*"
-      },
-    ]
-  })
-}
-
-# Configure website hosting
-resource "aws_s3_bucket_website_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "error.html"
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
-# Create CloudFront distribution
+# Create DNS validation records for the certificate
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.website.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = aws_route53_zone.website.id
+}
+
+# Certificate validation
+resource "aws_acm_certificate_validation" "website" {
+  provider                = aws.eu-west-1 
+  certificate_arn         = aws_acm_certificate.website.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+  depends_on             = [aws_route53_record.cert_validation]
+}
+
+# CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
+  depends_on = [aws_acm_certificate_validation.website]  
+
   origin {
     domain_name = aws_s3_bucket.website.bucket_regional_domain_name
     origin_id   = "s3-website"
@@ -57,6 +56,7 @@ resource "aws_cloudfront_distribution" "website" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
+  aliases             = ["santiagofischel.com"]
 
   default_cache_behavior {
     viewer_protocol_policy = "redirect-to-https"
@@ -84,31 +84,23 @@ resource "aws_cloudfront_distribution" "website" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate.website.arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 }
 
-# Create Route53 record
-resource "aws_route53_zone" "website" {
-  name = "santiagofischel.com" 
+output "nameservers" {
+  value       = aws_route53_zone.website.name_servers
+  description = "Nameservers for the Route53 zone. Update these in your domain registrar."
 }
 
-resource "aws_route53_record" "website" {
-  zone_id = aws_route53_zone.website.id
-  name    = "santiagofischel.com" 
-  type    = "A"
-
-  alias {
-    name                   = aws_cloudfront_distribution.website.domain_name
-    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
-    evaluate_target_health = false
-  }
+# Add CloudFront domain output for verification
+output "cloudfront_domain" {
+  value = aws_cloudfront_distribution.website.domain_name
 }
 
-output "cloudfront_distribution_id" {
-  value       = aws_cloudfront_distribution.website.id
-}
-
-output "website_bucket_name" {
-  value       = aws_s3_bucket.website.id
+# Add certificate ARN output for verification
+output "certificate_arn" {
+  value = aws_acm_certificate.website.arn
 }
