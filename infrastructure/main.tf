@@ -1,11 +1,10 @@
-
 provider "aws" {
   region = "eu-west-1"
 }
 
-
+# Secondary provider for us-east-1 to support ACM for CloudFront
 provider "aws" {
-  alias  = "us-east-1"
+  alias  = "us-east"
   region = "us-east-1"
 }
 
@@ -14,6 +13,7 @@ resource "aws_s3_bucket" "website" {
   bucket = "personal-resume-website-tatofs"
 }
 
+# Make S3 bucket public
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
@@ -53,80 +53,48 @@ resource "aws_s3_bucket_website_configuration" "website" {
   }
 }
 
-# Create Route 53 Zone
-resource "aws_route53_zone" "website" {
-  name = "santiagofischel.com"
-}
-
-# Create Route 53 record to point domain to CloudFront
-resource "aws_route53_record" "website" {
-  zone_id = aws_route53_zone.website.id
-  name    = "santiagofischel.com"
-  type    = "A"
-
-  alias {
-    name                   = aws_cloudfront_distribution.website.domain_name
-    zone_id               = aws_cloudfront_distribution.website.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
-
-# Create ACM Certificate (in us-east-1)
-resource "aws_acm_certificate" "website" {
-  provider          = aws.us-east-1
+# ACM Certificate in us-east-1 for HTTPS with CloudFront
+resource "aws_acm_certificate" "website_cert" {
+  provider          = aws.us-east
   domain_name       = "santiagofischel.com"
   validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
-# Create DNS validation records for the certificate
+# Route53 DNS validation for ACM certificate
 resource "aws_route53_record" "cert_validation" {
   for_each = {
-    for dvo in aws_acm_certificate.website.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.website_cert.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
-      record = dvo.resource_record_value
       type   = dvo.resource_record_type
+      value  = dvo.resource_record_value
     }
   }
 
-  allow_overwrite = true
-  name            = each.value.name
-  records         = [each.value.record]
-  ttl             = 60
-  type            = each.value.type
-  zone_id         = aws_route53_zone.website.id
+  zone_id = aws_route53_zone.website.id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.value]
+  ttl     = 300
 }
 
-# Certificate validation
-resource "aws_acm_certificate_validation" "website" {
-  provider                = aws.us-east-1
-  certificate_arn         = aws_acm_certificate.website.arn
+# ACM certificate validation
+resource "aws_acm_certificate_validation" "cert_validation" {
+  provider            = aws.us-east
+  certificate_arn     = aws_acm_certificate.website_cert.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
-  depends_on             = [aws_route53_record.cert_validation]
 }
 
-# CloudFront distribution
+# CloudFront distribution using ACM certificate for HTTPS
 resource "aws_cloudfront_distribution" "website" {
-  depends_on = [aws_acm_certificate_validation.website]
-
   origin {
     domain_name = aws_s3_bucket.website.bucket_regional_domain_name
     origin_id   = "s3-website"
-
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
   }
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  aliases             = ["santiagofischel.com"]
+
+  aliases = ["santiagofischel.com"]
 
   default_cache_behavior {
     viewer_protocol_policy = "redirect-to-https"
@@ -147,48 +115,45 @@ resource "aws_cloudfront_distribution" "website" {
 
   price_class = "PriceClass_100"
 
+  viewer_certificate {
+    acm_certificate_arn = aws_acm_certificate.website_cert.arn
+    ssl_support_method  = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2018"
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
     }
   }
 
-  viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate.website.arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
-  }
-
-  # Add custom error response to redirect 404 to index.html for SPA support
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
+  tags = {
+    Name = "personal-resume-website-tatofs distribution"
   }
 }
 
-# Outputs
-output "nameservers" {
-  value       = aws_route53_zone.website.name_servers
-  description = "Nameservers for the Route53 zone. Update these in your domain registrar."
+# Create Route53 hosted zone for santiagofischel.com
+resource "aws_route53_zone" "website" {
+  name = "santiagofischel.com"
 }
 
-output "cloudfront_domain" {
-  value = aws_cloudfront_distribution.website.domain_name
+# Route53 Alias record pointing santiagofischel.com to CloudFront
+resource "aws_route53_record" "website_alias" {
+  zone_id = aws_route53_zone.website.id
+  name    = "santiagofischel.com"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.website.domain_name
+    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
+    evaluate_target_health = false
+  }
 }
 
-output "certificate_arn" {
-  value = aws_acm_certificate.website.arn
-}
-
-# Add CloudFront distribution ID output for GitHub Actions
 output "cloudfront_distribution_id" {
   value = aws_cloudfront_distribution.website.id
-  description = "CloudFront Distribution ID for cache invalidation"
 }
 
-# Add website endpoint output
-output "website_endpoint" {
-  value = aws_s3_bucket_website_configuration.website.website_endpoint
-  description = "S3 static website hosting endpoint"
+output "website_bucket_name" {
+  value = aws_s3_bucket.website.id
 }
