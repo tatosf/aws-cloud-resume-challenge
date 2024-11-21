@@ -1,4 +1,3 @@
-
 provider "aws" {
   region = "eu-west-1"
 }
@@ -13,7 +12,6 @@ resource "aws_s3_bucket" "website" {
   bucket = "personal-resume-website-tatofs"
 }
 
-# Make S3 bucket public
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
@@ -40,7 +38,6 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
-# Configure website hosting
 resource "aws_s3_bucket_website_configuration" "website" {
   bucket = aws_s3_bucket.website.id
 
@@ -53,38 +50,7 @@ resource "aws_s3_bucket_website_configuration" "website" {
   }
 }
 
-# ACM Certificate in us-east-1 for HTTPS with CloudFront
-resource "aws_acm_certificate" "website_cert" {
-  provider          = aws.us-east
-  domain_name       = "santiagofischel.com"
-  validation_method = "DNS"
-}
-
-# Route53 DNS validation for ACM certificate
-resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.website_cert.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      type   = dvo.resource_record_type
-      value  = dvo.resource_record_value
-    }
-  }
-
-  zone_id = aws_route53_zone.website.id
-  name    = each.value.name
-  type    = each.value.type
-  records = [each.value.value]
-  ttl     = 300
-}
-
-# ACM certificate validation
-resource "aws_acm_certificate_validation" "cert_validation" {
-  provider            = aws.us-east
-  certificate_arn     = aws_acm_certificate.website_cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
-}
-
-# CloudFront distribution using ACM certificate for HTTPS
+# CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
   origin {
     domain_name = aws_s3_bucket.website.bucket_regional_domain_name
@@ -116,9 +82,7 @@ resource "aws_cloudfront_distribution" "website" {
   price_class = "PriceClass_100"
 
   viewer_certificate {
-    acm_certificate_arn = aws_acm_certificate.website_cert.arn
-    ssl_support_method  = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2018"
+    cloudfront_default_certificate = true
   }
 
   restrictions {
@@ -132,12 +96,10 @@ resource "aws_cloudfront_distribution" "website" {
   }
 }
 
-# Create Route53 hosted zone for santiagofischel.com
 resource "aws_route53_zone" "website" {
   name = "santiagofischel.com"
 }
 
-# Route53 Alias record pointing santiagofischel.com to CloudFront
 resource "aws_route53_record" "website_alias" {
   zone_id = aws_route53_zone.website.id
   name    = "santiagofischel.com"
