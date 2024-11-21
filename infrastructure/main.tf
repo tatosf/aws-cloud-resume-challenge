@@ -60,7 +60,8 @@ resource "aws_cloudfront_distribution" "website" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  aliases = ["santiagofischel.com"]
+  # Remove aliases for now
+  # aliases = ["santiagofischel.com"]
 
   default_cache_behavior {
     viewer_protocol_policy = "redirect-to-https"
